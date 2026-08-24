@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario Lavoro — Stefano Crippa</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cal. Lavoro">
+<meta name="theme-color" content="#3a5a40">
+<style>
+  :root{
+    --bg:#f6f5f3;
+    --surface:#ffffff;
+    --border:#e4e1db;
+    --text:#28261f;
+    --text-dim:#75705f;
+    --text-faint:#a39d8a;
+    --accent:#3a5a40;
+    --accent-soft:#e8efe6;
+    --danger:#b3392f;
+    --travel:#3f6b74;
+    --travel-soft:#e6eef0;
+    --note-bg:#efece4;
+    --note-text:#75705f;
+    --radius:10px;
+    --radius-sm:6px;
+    --shadow:0 1px 2px rgba(30,27,15,.06),0 4px 14px rgba(30,27,15,.05);
+    font-size:15px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;font-size:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:inherit;}
+
+  .app{max-width:1180px;margin:0 auto;padding:20px 20px 60px;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;flex-wrap:wrap;margin-bottom:16px;
+  }
+  header.top h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em;}
+  header.top .sub{color:var(--text-dim);font-size:12.5px;margin-top:2px;}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+  .btn{
+    border:1px solid var(--border);background:var(--surface);color:var(--text);
+    border-radius:var(--radius-sm);padding:7px 12px;font-weight:500;
+    display:inline-flex;align-items:center;gap:6px;transition:background .12s,border-color .12s;
+  }
+  .btn:hover{background:#f1efe9;}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{background:#2f4a34;}
+  .btn.danger{color:var(--danger);border-color:#e6c9c5;}
+  .btn.danger:hover{background:#fbeeec;}
+  .btn.ghost{border-color:transparent;background:transparent;}
+  .btn.ghost:hover{background:#eeece5;}
+  .btn.small{padding:4px 9px;font-size:12.5px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+  /* ---------- Tabs / toolbar ---------- */
+  .toolbar{
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    margin-bottom:14px;
+  }
+  .tabs{display:flex;gap:2px;background:#ece9e2;padding:3px;border-radius:9px;}
+  .tabs button{
+    border:none;background:transparent;padding:6px 13px;border-radius:7px;font-weight:550;color:var(--text-dim);
+  }
+  .tabs button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow);}
+
+  .month-nav{display:flex;align-items:center;gap:4px;}
+  .month-nav .label{font-weight:650;min-width:150px;text-align:center;font-size:15.5px;}
+  .month-nav button{border:1px solid var(--border);background:var(--surface);border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+  .month-nav button:hover{background:#f1efe9;}
+
+  .search-filter{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .search-box{position:relative;}
+  .search-box input{
+    border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px 7px 28px;width:200px;background:var(--surface);
+  }
+  .search-box svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-faint);}
+
+  /* ---------- Filter panel ---------- */
+  .filter-panel{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:14px 16px;margin-bottom:14px;display:none;gap:18px;flex-wrap:wrap;
+  }
+  .filter-panel.open{display:flex;}
+  .filter-group{min-width:160px;}
+  .filter-group h4{margin:0 0 8px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-dim);font-weight:650;}
+  .filter-group label{display:flex;align-items:center;gap:6px;font-size:13px;padding:3px 0;cursor:pointer;}
+  .chip-list{display:flex;flex-wrap:wrap;gap:6px;max-height:150px;overflow:auto;padding-right:4px;}
+  .chip-check{
+    display:flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:20px;padding:3px 10px 3px 6px;font-size:12.5px;background:#fff;
+  }
+  .chip-check input{margin:0;}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+
+  /* ---------- Calendar grid ---------- */
+  .grid-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  .grid-weekdays{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);}
+  .grid-weekdays div{padding:8px 0;text-align:center;font-size:11.5px;font-weight:650;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);}
+  .day-cell{
+    min-height:104px;max-height:150px;overflow:hidden;border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+    padding:6px;display:flex;flex-direction:column;gap:3px;position:relative;cursor:pointer;
+    transition:background .1s;
+  }
+  .day-cell:hover{background:#fbfaf7;}
+  .day-cell:nth-child(7n){border-right:none;}
+  .day-cell.outside{background:#fafaf8;color:var(--text-faint);}
+  .day-cell.today{background:#f2f7f0;}
+  .day-num{font-size:12px;font-weight:600;color:var(--text-dim);}
+  .day-cell.today .day-num{color:var(--accent);font-weight:750;}
+  .pill{
+    font-size:11px;padding:2px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-weight:560;border-left:3px solid transparent;line-height:1.5;
+  }
+  .pill.tbc{border-style:dashed;opacity:.88;}
+  .pill-more{font-size:10.5px;color:var(--text-faint);padding:1px 4px;font-weight:600;}
+  .day-chips{display:flex;flex-direction:column;gap:1.5px;width:100%;overflow:hidden;}
+  .day-chip{
+    font-size:8.5px;line-height:1.25;padding:0 3px;border-radius:3px;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;font-weight:600;border-left:2px solid transparent;width:100%;
+  }
+  .day-chip.tbc{opacity:.7;}
+  .day-chip-more{font-size:8px;color:var(--text-faint);font-weight:700;line-height:1;padding-left:1px;}
+
+  /* ---------- Day detail modal ---------- */
+  .day-modal-list{display:flex;flex-direction:column;gap:8px;}
+  .day-modal-empty{padding:24px 0;text-align:center;color:var(--text-faint);font-size:13.5px;}
+
+  /* ---------- Agenda ---------- */
+  .agenda-list{display:flex;flex-direction:column;gap:8px;}
+  .agenda-empty{padding:40px;text-align:center;color:var(--text-faint);}
+  .agenda-day-label{font-size:11.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;padding-left:2px;}
+  .agenda-row{
+    background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--row-color,#999);
+    border-radius:var(--radius-sm);padding:9px 12px;display:flex;align-items:center;gap:12px;cursor:pointer;
+    box-shadow:var(--shadow);
+  }
+  .agenda-row:hover{background:#fbfaf7;}
+  .agenda-main{flex:1;min-width:0;}
+  .agenda-title{font-weight:650;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .agenda-meta{font-size:12.5px;color:var(--text-dim);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap;}
+  .agenda-side{display:flex;align-items:center;gap:14px;font-size:13px;flex:0 0 auto;}
+  .agenda-fee{font-weight:650;min-width:70px;text-align:right;}
+  .agenda-fee.tbc{color:var(--text-faint);font-weight:500;}
+
+  .badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.02em;}
+  .badge.confermato{background:#e3f1e0;color:#3a5a40;}
+  .badge.tbc{background:#fbeed7;color:#96660c;}
+  .badge.opzione{background:#ece3f8;color:#5c3a96;}
+  .badge.travel{background:var(--travel-soft);color:var(--travel);}
+  .badge.nota{background:var(--note-bg);color:var(--note-text);}
+  .badge.fatturato{background:#dcebf7;color:#2a5a82;}
+  .badge.da-fatturare{background:#fbe6e2;color:#a8402f;}
+
+  /* ---------- Riepilogo ---------- */
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+  .stat-card .label{font-size:11.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;font-weight:650;}
+  .stat-card .value{font-size:22px;font-weight:700;margin-top:4px;}
+  .stat-card .value.sub{font-size:12.5px;color:var(--text-dim);font-weight:500;margin-top:2px;}
+  table.summary-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+  table.summary-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-dim);padding:9px 12px;border-bottom:1px solid var(--border);background:#faf9f6;}
+  table.summary-table td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:13.5px;}
+  table.summary-table tr:last-child td{border-bottom:none;}
+  table.summary-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  h3.section-title{font-size:13.5px;font-weight:700;margin:22px 0 8px;color:var(--text);}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(30,28,20,.4);display:none;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow:auto;z-index:100;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:14px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);}
+  .modal-header h2{font-size:16px;margin:0;}
+  .modal-body{padding:18px 20px;display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow:auto;}
+  .modal-footer{display:flex;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--border);}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;font-weight:650;color:var(--text-dim);}
+  .field input[type=text],.field input[type=number],.field input[type=date],.field select,.field textarea{
+    border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;background:#fff;width:100%;
+  }
+  .field textarea{resize:vertical;min-height:56px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .checkline{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim);}
+  .close-x{border:none;background:none;font-size:18px;color:var(--text-dim);padding:2px 6px;border-radius:6px;}
+  .close-x:hover{background:#eee;}
+  .kind-toggle{display:flex;gap:6px;background:#ece9e2;padding:3px;border-radius:9px;}
+  .kind-toggle button{flex:1;border:none;background:transparent;padding:7px 8px;border-radius:7px;font-weight:600;font-size:12.5px;color:var(--text-dim);}
+  .kind-toggle button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow);}
+
+  .reimb-list{display:flex;flex-direction:column;gap:8px;}
+  .reimb-row{display:grid;grid-template-columns:1fr 100px 72px 72px auto;gap:8px;align-items:center;}
+  .reimb-row input{border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px;width:100%;}
+  .reimb-approved{display:flex;align-items:center;gap:5px;font-size:12px;justify-content:center;}
+  .reimb-del{border:none;background:none;color:var(--text-faint);font-size:15px;padding:4px;}
+  .reimb-del:hover{color:var(--danger);}
+
+  .color-swatch{width:16px;height:16px;border-radius:5px;flex:0 0 auto;border:1px solid rgba(0,0,0,.08);}
+  .company-group{margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
+  .company-header{display:flex;align-items:center;gap:9px;padding:8px 10px;background:#faf9f6;border-bottom:1px solid var(--border);}
+  .company-header .company-name{font-weight:700;font-size:13px;flex:1;}
+  .client-color-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #f0eee8;}
+  .client-color-row:last-child{border-bottom:none;}
+  .client-color-row .name{flex:1;font-size:13.5px;}
+  .client-color-row input[type=color],.company-header input[type=color]{width:32px;height:26px;border:1px solid var(--border);border-radius:6px;padding:0;background:none;flex:0 0 auto;}
+  .client-color-row .cl-name, .company-header .co-name{
+    flex:1;min-width:0;border:1px solid transparent;background:transparent;font-size:13.5px;padding:4px 6px;border-radius:5px;
+  }
+  .client-color-row .cl-name:hover, .company-header .co-name:hover,
+  .client-color-row .cl-name:focus, .company-header .co-name:focus{
+    border-color:var(--border);background:#fff;outline:none;
+  }
+  .company-header .co-name{font-weight:700;font-size:13px;}
+  .client-color-row .cl-company{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;max-width:120px;background:#fff;flex:0 0 auto;}
+  .row-del{border:none;background:none;color:var(--text-faint);font-size:14px;padding:3px 6px;border-radius:5px;flex:0 0 auto;}
+  .row-del:hover{color:var(--danger);background:#fbeeec;}
+
+  .empty-state{padding:60px 20px;text-align:center;color:var(--text-dim);}
+  .empty-state h3{margin:0 0 6px;color:var(--text);}
+  .empty-state p{margin:0 0 16px;font-size:13.5px;color:var(--text-dim);max-width:420px;margin-left:auto;margin-right:auto;}
+
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:#c7c2b3;display:inline-block;margin-right:6px;}
+  .sync-dot.ok{background:#3a5a40;}
+  .sync-dot.syncing{background:#c9a24a;animation:pulse 1s infinite;}
+  .sync-dot.error{background:#b3392f;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .sync-status{font-size:12.5px;color:var(--text-dim);margin-top:4px;}
+
+  .hint{font-size:11.5px;color:var(--text-faint);}
+  footer.note{margin-top:26px;font-size:12px;color:var(--text-faint);text-align:center;line-height:1.6;}
+
+  @media(max-width:680px){
+    .row2,.row3{grid-template-columns:1fr;}
+    .day-cell{height:58px;min-height:58px;max-height:58px;padding:3px 3px;gap:1px;}
+    .day-num{font-size:10.5px;}
+    .pill{font-size:9.5px;padding:1px 4px;border-left-width:2px;line-height:1.35;}
+    .pill-more{font-size:9px;}
+    .agenda-side{flex-wrap:wrap;justify-content:flex-end;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div>
+      <h1>Calendario Lavoro</h1>
+      <div class="sub">Solo impegni di lavoro — tour, date, opzioni, viaggi, rimborsi</div>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="btnSync" title="Stato sincronizzazione"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Sincronizzazione</span></button>
+      <button class="btn" id="btnClients">Società / Clienti</button>
+      <button class="btn" id="btnExport">Esporta dati</button>
+      <button class="btn" id="btnImport">Importa dati</button>
+      <input type="file" id="fileImport" accept="application/json" style="display:none;">
+      <button class="btn primary" id="btnNew">+ Nuovo</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="tabs">
+      <button data-tab="grid" class="active">Calendario</button>
+      <button data-tab="agenda">Agenda</button>
+      <button data-tab="summary">Riepilogo</button>
+    </div>
+    <div class="month-nav" id="monthNav">
+      <button id="prevMonth" aria-label="Mese precedente">‹</button>
+      <div class="label" id="monthLabel">—</div>
+      <button id="nextMonth" aria-label="Mese successivo">›</button>
+      <button class="btn small" id="btnToday" style="margin-left:6px;">Oggi</button>
+    </div>
+    <div class="search-filter">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchBox" placeholder="Cerca artista, venue, società…">
+      </div>
+      <button class="btn" id="btnFilter">Filtri</button>
+    </div>
+  </div>
+
+  <div class="filter-panel" id="filterPanel">
+    <div class="filter-group">
+      <h4>Tipo</h4>
+      <label><input type="checkbox" class="f-kind" value="impegno" checked> Impegni</label>
+      <label><input type="checkbox" class="f-kind" value="travel" checked> Viaggi/trasferte</label>
+      <label><input type="checkbox" class="f-kind" value="nota" checked> Note</label>
+    </div>
+    <div class="filter-group">
+      <h4>Stato</h4>
+      <label><input type="checkbox" class="f-status" value="confermato" checked> Confermato</label>
+      <label><input type="checkbox" class="f-status" value="tbc" checked> TBC</label>
+      <label><input type="checkbox" class="f-status" value="opzione" checked> Opzione</label>
+    </div>
+    <div class="filter-group" style="min-width:260px;">
+      <h4>Clienti / Tour</h4>
+      <div class="chip-list" id="clientChips"></div>
+    </div>
+    <div class="filter-group">
+      <h4>&nbsp;</h4>
+      <button class="btn small" id="btnClearFilters">Reimposta filtri</button>
+    </div>
+  </div>
+
+  <div id="viewGrid">
+    <div class="grid-wrap">
+      <div class="grid-weekdays">
+        <div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div>
+      </div>
+      <div class="grid" id="gridBody"></div>
+    </div>
+  </div>
+
+  <div id="viewAgenda" style="display:none;">
+    <div class="agenda-list" id="agendaBody"></div>
+  </div>
+
+  <div id="viewSummary" style="display:none;"></div>
+
+  <footer class="note">
+    I dati vivono solo in questa pagina finché resta aperta. Usa <strong>Esporta dati</strong> per salvare un file sul tuo Mac, e <strong>Importa dati</strong> per ricaricarlo la prossima volta.
+  </footer>
+</div>
+
+<!-- Event modal -->
+<div class="overlay" id="eventOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="eventModalTitle">Nuovo</h2>
+      <button class="close-x" id="closeEventModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="kind-toggle" id="kindToggle">
+        <button type="button" data-kind="impegno" class="active">Impegno</button>
+        <button type="button" data-kind="travel">Viaggio/trasferta</button>
+        <button type="button" data-kind="nota">Nota libera</button>
+      </div>
+
+      <div class="row2" id="fld-artistCompany">
+        <div class="field">
+          <label>Artista / Tour <span id="artistOptionalHint" style="font-weight:400;"></span></label>
+          <input type="text" id="f-artist" list="artistList" placeholder="es. ROB, BAO, MINISTRI…">
+          <datalist id="artistList"></datalist>
+        </div>
+        <div class="field">
+          <label>Società che ingaggia</label>
+          <input type="text" id="f-company" list="companyList" placeholder="es. OUTSIDE, LOCUSTA, DNA…">
+          <datalist id="companyList"></datalist>
+        </div>
+      </div>
+
+      <div class="field" id="fld-label" style="display:none;">
+        <label>Cosa devi ricordare?</label>
+        <input type="text" id="f-label" placeholder="es. Ferie, giorno libero…">
+      </div>
+
+      <div class="field" id="fld-venue">
+        <label>Venue / luogo</label>
+        <input type="text" id="f-venue" placeholder="es. Fabrique (MI)">
+      </div>
+
+      <div class="row3">
+        <div class="field">
+          <label>Data inizio</label>
+          <input type="date" id="f-start">
+        </div>
+        <div class="field">
+          <label>Data fine (se più giorni)</label>
+          <input type="date" id="f-end">
+        </div>
+        <div class="field" id="fld-status">
+          <label>Stato</label>
+          <select id="f-status">
+            <option value="confermato">Confermato</option>
+            <option value="tbc">TBC</option>
+            <option value="opzione">Opzione</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row2" id="fld-feeSub">
+        <div class="field">
+          <label>Compenso (€)</label>
+          <input type="number" id="f-fee" placeholder="es. 300" step="0.01">
+        </div>
+        <div class="field" id="fld-substitute">
+          <label>Sostituto (se manda qualcuno al posto tuo)</label>
+          <input type="text" id="f-substitute" placeholder="Nome del sostituto">
+        </div>
+      </div>
+
+      <label class="checkline" id="fld-invoiced">
+        <input type="checkbox" id="f-invoiced"> Fatturato
+      </label>
+
+      <div class="field">
+        <label>Note</label>
+        <textarea id="f-notes" placeholder="Logistica, orari, appunti…"></textarea>
+      </div>
+
+      <div class="field" id="fld-reimb">
+        <label>Rimborsi</label>
+        <div class="reimb-list" id="reimbList"></div>
+        <button class="btn small" id="btnAddReimb" style="align-self:flex-start;">+ Aggiungi rimborso</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn danger" id="btnDeleteEvent" style="display:none;">Elimina</button>
+      <div style="display:flex;gap:8px;margin-left:auto;">
+        <button class="btn" id="btnCancelEvent">Annulla</button>
+        <button class="btn primary" id="btnSaveEvent">Salva</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Clients modal -->
+<div class="overlay" id="clientsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Società / Clienti</h2>
+      <button class="close-x" id="closeClientsModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">Puoi rinominare, spostare sotto un'altra società o eliminare (tocca il nome per modificarlo). Rinominare un cliente con il nome di uno che esiste già lo unisce automaticamente, spostando i suoi impegni.</p>
+      <div id="clientColorList"></div>
+      <div class="field" style="margin-top:6px;">
+        <label>Aggiungi nuovo cliente/tour</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newClientName" placeholder="Nome cliente/tour">
+          <input type="text" id="newClientCompany" list="companyList" placeholder="Società (opzionale)" style="max-width:160px;">
+          <button class="btn" id="btnAddClient">Aggiungi</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <button class="btn primary" id="closeClientsModal2">Fatto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sync modal -->
+<div class="overlay" id="syncOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Sincronizzazione</h2>
+      <button class="close-x" id="closeSyncModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">I dati vengono sempre salvati automaticamente su questo dispositivo. Collega qui un bin gratuito di <strong>jsonbin.io</strong> per tenerli sincronizzati anche con gli altri tuoi dispositivi (es. telefono ↔ computer).</p>
+      <div class="field">
+        <label>Bin ID</label>
+        <input type="text" id="syncBinId" placeholder="es. 64f1a2b3c9e77...">
+      </div>
+      <div class="field">
+        <label>X-Master-Key (o Access Key)</label>
+        <input type="text" id="syncApiKey" placeholder="la tua chiave jsonbin.io">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="btnSyncSave">Salva connessione</button>
+        <button class="btn" id="btnSyncPull">Scarica dal cloud</button>
+        <button class="btn" id="btnSyncPush">Carica sul cloud</button>
+        <button class="btn danger" id="btnSyncDisconnect">Disconnetti</button>
+      </div>
+      <div class="sync-status" id="syncStatusText">Non connesso.</div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <button class="btn primary" id="closeSyncModal2">Fatto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Day detail modal (mobile compact-view tap target) -->
+<div class="overlay" id="dayOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="dayModalTitle">—</h2>
+      <button class="close-x" id="closeDayModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="day-modal-list" id="dayModalList"></div>
+    </div>
+    <div class="modal-footer">
+      <div></div>
+      <button class="btn primary" id="btnDayModalNew">+ Nuovo per questo giorno</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- State ---------------- */
+  // DB.companies: [{id,name,hue,color?}]  — macro (es. OUTSIDE, LOCUSTA, DNA)
+  // DB.clients:   [{id,name,companyId|null,hue,color?}] — tour/artista
+  // DB.events:    [{id, kind:'impegno'|'travel'|'nota', clientId|null, label, venue, dateStart, dateEnd,
+  //                 status, fee, substitute, notes, reimbursements:[{id,desc,amount,approved}]}]
+  const LS_DB_KEY = 'calendarioLavoro.db.v1';
+  const LS_SYNC_KEY = 'calendarioLavoro.sync.v1';
+
+  function loadLocalDB(){
+    try {
+      const raw = localStorage.getItem(LS_DB_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data.clients || !data.events) return null;
+      data.companies = data.companies || [];
+      return data;
+    } catch(e){ return null; }
+  }
+  let DB = loadLocalDB() || { companies: [], clients: [], events: [], updatedAt: null };
+
+  let syncConfig = (() => {
+    try { return JSON.parse(localStorage.getItem(LS_SYNC_KEY) || 'null') || { binId:'', apiKey:'' }; }
+    catch(e){ return { binId:'', apiKey:'' }; }
+  })();
+
+  let view = {
+    tab: 'grid', year: new Date().getFullYear(), month: new Date().getMonth(), search: '',
+    statuses: new Set(['confermato','tbc','opzione']),
+    kinds: new Set(['impegno','travel','nota']),
+    clientFilter: null, // Set or null=all
+  };
+  let editingEventId = null;
+  let currentKind = 'impegno';
+
+  const MONTHS = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+
+  /* ---------------- Utils ---------------- */
+  function uid(prefix){ return prefix + Math.random().toString(36).slice(2,9); }
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function isoDate(y,m,d){ return `${y}-${pad2(m+1)}-${pad2(d)}`; }
+  function parseISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+  function fmtMoney(n){
+    if (n===null || n===undefined || isNaN(n)) return '—';
+    return n.toLocaleString('it-IT',{style:'currency',currency:'EUR',maximumFractionDigits:2});
+  }
+  function fmtDateHuman(iso){
+    const d = parseISO(iso);
+    return d.toLocaleDateString('it-IT',{weekday:'short', day:'numeric', month:'short'});
+  }
+  function todayISO(){ const d=new Date(); return isoDate(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function hashHue(str){
+    let h = 0;
+    for (let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) & 0xffffffff; }
+    return Math.abs(h) % 360;
+  }
+
+  /* ---------------- Persistenza locale + sincronizzazione cloud ---------------- */
+  function persistLocal(){
+    try { localStorage.setItem(LS_DB_KEY, JSON.stringify(DB)); } catch(e){ /* storage pieno o non disponibile */ }
+  }
+  function saveSyncConfig(){
+    try { localStorage.setItem(LS_SYNC_KEY, JSON.stringify(syncConfig)); } catch(e){}
+  }
+  let pushTimer = null;
+  function markDirty(){
+    DB.updatedAt = new Date().toISOString();
+    persistLocal();
+    if (syncConfig.binId && syncConfig.apiKey){
+      clearTimeout(pushTimer);
+      pushTimer = setTimeout(pushToCloud, 1500);
+    }
+    updateSyncUI();
+  }
+
+  function setSyncStatus(state, text){
+    const dot = document.getElementById('syncDot');
+    const label = document.getElementById('syncLabel');
+    const statusText = document.getElementById('syncStatusText');
+    if (dot) dot.className = 'sync-dot' + (state ? ' '+state : '');
+    if (label) label.textContent = syncConfig.binId ? 'Sincronizzato' : 'Sincronizzazione';
+    if (statusText && text) statusText.textContent = text;
+  }
+  function updateSyncUI(){
+    if (!syncConfig.binId){ setSyncStatus('', 'Non connesso.'); return; }
+    const when = DB.updatedAt ? new Date(DB.updatedAt).toLocaleString('it-IT') : 'mai';
+    setSyncStatus('ok', `Connesso. Ultimo aggiornamento locale: ${when}.`);
+  }
+
+  async function pushToCloud(){
+    if (!syncConfig.binId || !syncConfig.apiKey) return;
+    setSyncStatus('syncing', 'Invio al cloud in corso…');
+    try {
+      const resp = await fetch(`https://api.jsonbin.io/v3/b/${syncConfig.binId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': syncConfig.apiKey },
+        body: JSON.stringify(DB),
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      setSyncStatus('ok', 'Sincronizzato — ultimo invio: ' + new Date().toLocaleTimeString('it-IT'));
+    } catch(err){
+      setSyncStatus('error', 'Errore di invio al cloud: ' + err.message + ' (i dati restano salvati in locale).');
+    }
+  }
+  async function pullFromCloud(showAlert){
+    if (!syncConfig.binId || !syncConfig.apiKey) return;
+    setSyncStatus('syncing', 'Scarico dal cloud…');
+    try {
+      const resp = await fetch(`https://api.jsonbin.io/v3/b/${syncConfig.binId}/latest`, {
+        headers: { 'X-Master-Key': syncConfig.apiKey },
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const json = await resp.json();
+      const cloudDB = json.record;
+      if (!cloudDB || !cloudDB.events){ setSyncStatus('error', 'Il bin è vuoto o in un formato diverso.'); return; }
+      const cloudTime = cloudDB.updatedAt ? new Date(cloudDB.updatedAt).getTime() : 0;
+      const localTime = DB.updatedAt ? new Date(DB.updatedAt).getTime() : 0;
+      if (showAlert || cloudTime > localTime){
+        cloudDB.companies = cloudDB.companies || [];
+        DB = cloudDB;
+        persistLocal();
+        render();
+      }
+      setSyncStatus('ok', 'Scaricato dal cloud — ' + new Date().toLocaleTimeString('it-IT'));
+      if (showAlert) alert('Dati aggiornati dal cloud.');
+    } catch(err){
+      setSyncStatus('error', 'Errore nello scaricare dal cloud: ' + err.message);
+    }
+  }
+
+  /* ---------------- Companies / Clients ---------------- */
+  function getCompany(id){ return DB.companies.find(c=>c.id===id); }
+  function ensureCompany(name){
+    name = (name||'').trim();
+    if (!name) return null;
+    let c = DB.companies.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if (!c){ c = { id: uid('co'), name, hue: hashHue(name) }; DB.companies.push(c); }
+    return c.id;
+  }
+  function companyColor(company){
+    if (!company) return '#8a8578';
+    if (company.color) return company.color;
+    return `hsl(${company.hue} 55% 38%)`;
+  }
+
+  function getClient(id){ return DB.clients.find(c=>c.id===id); }
+  function ensureClient(name, companyId){
+    name = (name||'').trim();
+    if (!name) return null;
+    let c = DB.clients.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if (!c){
+      c = { id: uid('c'), name, companyId: companyId || null, hue: hashHue(name) };
+      DB.clients.push(c);
+    } else if (companyId){
+      c.companyId = companyId; // keep tour's company up to date if provided again
+    }
+    return c.id;
+  }
+  function clientsOfCompany(companyId){
+    return DB.clients.filter(c=>c.companyId===companyId).sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  function clientColor(client){
+    if (!client) return '#8a8578';
+    if (client.color) return client.color;
+    const company = client.companyId ? getCompany(client.companyId) : null;
+    if (company){
+      const siblings = clientsOfCompany(company.id);
+      const idx = Math.max(0, siblings.findIndex(s=>s.id===client.id));
+      const lightness = 34 + (idx % 5) * 9; // vary shade within the company family
+      const hue = company.color ? hashHue(company.name) : company.hue;
+      return `hsl(${hue} 62% ${lightness}%)`;
+    }
+    return `hsl(${client.hue} 60% 42%)`;
+  }
+  function clientSoft(client){
+    const base = clientColor(client);
+    const m = base.match(/hsl\((\d+(?:\.\d+)?) /);
+    const hue = m ? m[1] : 0;
+    return `hsl(${hue} 65% 93%)`;
+  }
+  function clientText(client){
+    const base = clientColor(client);
+    const m = base.match(/hsl\((\d+(?:\.\d+)?) /);
+    const hue = m ? m[1] : 0;
+    return `hsl(${hue} 55% 30%)`;
+  }
+
+  function eachDateStr(startISO, endISO){
+    const out = [];
+    let cur = parseISO(startISO);
+    const end = parseISO(endISO || startISO);
+    while (cur <= end){
+      out.push(isoDate(cur.getFullYear(), cur.getMonth(), cur.getDate()));
+      cur.setDate(cur.getDate()+1);
+    }
+    return out;
+  }
+
+  /* ---------------- Event visual (label + colors) ---------------- */
+  function eventLabel(ev){
+    const c = getClient(ev.clientId);
+    if (c) return c.name;
+    return ev.label || (ev.kind==='travel' ? 'Viaggio' : 'Nota');
+  }
+  // Dicitura uniforme: Artista/Tour/Evento - LUOGO - Azienda
+  function fullLabel(ev){
+    if (ev.kind === 'nota') return ev.label || 'Nota';
+    const c = getClient(ev.clientId);
+    const name = c ? c.name : (ev.label || (ev.kind==='travel' ? 'Viaggio' : '—'));
+    const company = c && c.companyId ? (getCompany(c.companyId)?.name || '') : '';
+    const parts = [name];
+    if (ev.venue) parts.push(ev.venue);
+    if (company) parts.push(company);
+    return parts.join(' - ');
+  }
+  function eventVisual(ev){
+    const c = getClient(ev.clientId);
+    if (ev.kind === 'nota'){
+      return { bg: 'var(--note-bg)', text: 'var(--note-text)', border: '#a39d8a' };
+    }
+    if (ev.kind === 'travel'){
+      return {
+        bg: c ? clientSoft(c) : 'var(--travel-soft)',
+        text: c ? clientText(c) : 'var(--travel)',
+        border: 'var(--travel)',
+      };
+    }
+    return { bg: clientSoft(c), text: clientText(c), border: clientColor(c) };
+  }
+  function kindPrefix(ev){ return ev.kind==='travel' ? '✈ ' : (ev.kind==='nota' ? '● ' : ''); }
+  // Versione corta per la vista mobile compatta: solo artista/tour + venue, senza azienda.
+  function shortLabel(ev){
+    if (ev.kind === 'nota') return ev.label || 'Nota';
+    const c = getClient(ev.clientId);
+    const name = c ? c.name : (ev.label || (ev.kind==='travel' ? 'Viaggio' : '—'));
+    return ev.venue ? `${name} ${ev.venue}` : name;
+  }
+
+  /* ---------------- Filtering ---------------- */
+  function matchesFilters(ev){
+    if (!view.kinds.has(ev.kind)) return false;
+    if ((ev.kind==='impegno' || ev.kind==='travel') && !view.statuses.has(ev.status)) return false;
+    if (view.clientFilter && (!ev.clientId || !view.clientFilter.has(ev.clientId))) return false;
+    if (view.search){
+      const c = getClient(ev.clientId);
+      const hay = [c?c.name:'', ev.label||'', ev.venue, ev.notes].join(' ').toLowerCase();
+      if (!hay.includes(view.search.toLowerCase())) return false;
+    }
+    return true;
+  }
+  function filteredEvents(){ return DB.events.filter(matchesFilters); }
+
+  /* ---------------- Rendering: tabs/header ---------------- */
+  function renderMonthLabel(){
+    document.getElementById('monthLabel').textContent = `${MONTHS[view.month]} ${view.year}`;
+  }
+
+  /* ---------------- Rendering: Grid ---------------- */
+  function renderGrid(){
+    renderMonthLabel();
+    const body = document.getElementById('gridBody');
+    body.innerHTML = '';
+    const first = new Date(view.year, view.month, 1);
+    const firstWeekday = (first.getDay() + 6) % 7; // Monday=0
+    const daysInMonth = new Date(view.year, view.month+1, 0).getDate();
+    const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+    const evs = filteredEvents();
+    const byDate = {};
+    evs.forEach(ev=>{
+      eachDateStr(ev.dateStart, ev.dateEnd).forEach(d=>{
+        (byDate[d] = byDate[d] || []).push(ev);
+      });
+    });
+
+    const today = todayISO();
+    const mobile = isMobileView();
+    for (let i=0;i<totalCells;i++){
+      const dayNum = i - firstWeekday + 1;
+      const cell = document.createElement('div');
+      let cellDate, inMonth = true;
+      if (dayNum < 1){
+        const prevMonthDays = new Date(view.year, view.month, 0).getDate();
+        const d = prevMonthDays + dayNum;
+        const pm = view.month===0 ? 11 : view.month-1;
+        const py = view.month===0 ? view.year-1 : view.year;
+        cellDate = isoDate(py,pm,d); inMonth=false;
+      } else if (dayNum > daysInMonth){
+        const d = dayNum - daysInMonth;
+        const nm = view.month===11 ? 0 : view.month+1;
+        const ny = view.month===11 ? view.year+1 : view.year;
+        cellDate = isoDate(ny,nm,d); inMonth=false;
+      } else {
+        cellDate = isoDate(view.year, view.month, dayNum);
+      }
+      cell.className = 'day-cell' + (inMonth?'':' outside') + (cellDate===today?' today':'');
+      cell.innerHTML = `<div class="day-num">${parseISO(cellDate).getDate()}</div>`;
+      const dayEvents = (byDate[cellDate]||[]).sort((a,b)=> eventLabel(a).localeCompare(eventLabel(b)));
+
+      if (mobile){
+        // Vista compatta tipo Google Calendar: mini-etichette corte (es. "sayf empoli"), tap sul giorno apre l'elenco completo.
+        if (dayEvents.length){
+          const chips = document.createElement('div');
+          chips.className = 'day-chips';
+          const maxChips = 2;
+          dayEvents.slice(0,maxChips).forEach(ev=>{
+            const vis = eventVisual(ev);
+            const chip = document.createElement('div');
+            chip.className = 'day-chip' + (ev.status==='tbc' && ev.kind!=='nota' ? ' tbc' : '');
+            chip.style.background = vis.bg;
+            chip.style.color = vis.text;
+            chip.style.borderLeftColor = vis.border;
+            chip.textContent = kindPrefix(ev) + shortLabel(ev);
+            chips.appendChild(chip);
+          });
+          if (dayEvents.length > maxChips){
+            const more = document.createElement('div');
+            more.className = 'day-chip-more';
+            more.textContent = `+${dayEvents.length - maxChips}`;
+            chips.appendChild(more);
+          }
+          cell.appendChild(chips);
+        }
+        cell.addEventListener('click', ()=> openDayModal(cellDate));
+      } else {
+        const maxShow = 3;
+        dayEvents.slice(0,maxShow).forEach(ev=>{
+          const vis = eventVisual(ev);
+          const pill = document.createElement('div');
+          pill.className = 'pill' + (ev.status==='tbc' && ev.kind!=='nota' ? ' tbc' : '');
+          pill.style.background = vis.bg;
+          pill.style.color = vis.text;
+          pill.style.borderLeftColor = vis.border;
+          const label = kindPrefix(ev) + fullLabel(ev);
+          pill.textContent = label;
+          pill.title = label + (ev.status==='tbc' && ev.kind!=='nota' ?' (TBC)':'');
+          pill.addEventListener('click', (e)=>{ e.stopPropagation(); openEventModal(ev.id); });
+          cell.appendChild(pill);
+        });
+        if (dayEvents.length > maxShow){
+          const more = document.createElement('div');
+          more.className = 'pill-more';
+          more.textContent = `+${dayEvents.length - maxShow} altri`;
+          cell.appendChild(more);
+        }
+        cell.addEventListener('click', ()=> openEventModal(null, cellDate));
+      }
+      body.appendChild(cell);
+    }
+  }
+
+  function isMobileView(){ return window.innerWidth < 680; }
+
+  /* ---------------- Day detail modal ---------------- */
+  let dayModalDate = null;
+  function openDayModal(dateStr){
+    dayModalDate = dateStr;
+    const dayEvents = filteredEvents()
+      .filter(ev => eachDateStr(ev.dateStart, ev.dateEnd).includes(dateStr))
+      .sort((a,b)=> eventLabel(a).localeCompare(eventLabel(b)));
+    document.getElementById('dayModalTitle').textContent = fmtDateHuman(dateStr);
+    const list = document.getElementById('dayModalList');
+    list.innerHTML = '';
+    if (!dayEvents.length){
+      list.innerHTML = '<div class="day-modal-empty">Nessun impegno in questo giorno.</div>';
+    } else {
+      dayEvents.forEach(ev=>{
+        const vis = eventVisual(ev);
+        const row = document.createElement('div');
+        row.className = 'agenda-row';
+        row.style.setProperty('--row-color', vis.border);
+        const showFee = ev.kind !== 'nota';
+        row.innerHTML = `
+          <div class="agenda-main">
+            <div class="agenda-title">
+              <span>${kindPrefix(ev)}${escapeHtml(fullLabel(ev))}</span>
+              ${ev.kind==='impegno' ? `<span class="badge ${ev.status}">${ev.status}</span>` : ''}
+              ${ev.kind==='travel' ? `<span class="badge travel">${ev.status}</span>` : ''}
+              ${ev.kind==='nota' ? `<span class="badge nota">nota</span>` : ''}
+              ${ev.kind!=='nota' && ev.invoiced ? `<span class="badge fatturato">fatturato</span>` : ''}
+            </div>
+          </div>
+          <div class="agenda-side">
+            ${showFee ? `<div class="agenda-fee ${ev.fee==null?'tbc':''}">${ev.fee==null?'da def.':fmtMoney(ev.fee)}</div>` : ''}
+          </div>`;
+        row.addEventListener('click', ()=>{ closeDayModal(); openEventModal(ev.id); });
+        list.appendChild(row);
+      });
+    }
+    document.getElementById('dayOverlay').classList.add('open');
+  }
+  function closeDayModal(){
+    document.getElementById('dayOverlay').classList.remove('open');
+    dayModalDate = null;
+  }
+
+  /* ---------------- Rendering: Agenda ---------------- */
+  function renderAgenda(){
+    renderMonthLabel();
+    const body = document.getElementById('agendaBody');
+    body.innerHTML = '';
+    const monthStart = isoDate(view.year, view.month, 1);
+    const monthEnd = isoDate(view.year, view.month, new Date(view.year, view.month+1,0).getDate());
+    const evs = filteredEvents().filter(ev => ev.dateEnd >= monthStart && ev.dateStart <= monthEnd);
+    evs.sort((a,b)=> a.dateStart.localeCompare(b.dateStart));
+
+    if (!evs.length){
+      body.innerHTML = `<div class="agenda-empty">Nessun elemento in ${MONTHS[view.month]} ${view.year} con i filtri attuali.</div>`;
+      return;
+    }
+
+    let lastDate = null;
+    evs.forEach(ev=>{
+      if (ev.dateStart !== lastDate){
+        lastDate = ev.dateStart;
+        const label = document.createElement('div');
+        label.className = 'agenda-day-label';
+        label.textContent = fmtDateHuman(ev.dateStart);
+        body.appendChild(label);
+      }
+      const vis = eventVisual(ev);
+      const row = document.createElement('div');
+      row.className = 'agenda-row';
+      row.style.setProperty('--row-color', vis.border);
+      const reimbs = ev.reimbursements || [];
+      const reimbTotal = reimbs.reduce((s,r)=> s + (r.amount||0), 0);
+      const reimbCount = reimbs.length;
+      const reimbRequested = reimbs.filter(r=>r.requested).length;
+      const reimbApproved = reimbs.filter(r=>r.approved).length;
+      const showFee = ev.kind !== 'nota';
+      row.innerHTML = `
+        <div class="agenda-main">
+          <div class="agenda-title">
+            <span>${kindPrefix(ev)}${escapeHtml(fullLabel(ev))}</span>
+            ${ev.kind==='impegno' ? `<span class="badge ${ev.status}">${ev.status}</span>` : ''}
+            ${ev.kind==='travel' ? `<span class="badge travel">${ev.status}</span>` : ''}
+            ${ev.kind==='nota' ? `<span class="badge nota">nota</span>` : ''}
+            ${ev.kind!=='nota' && ev.invoiced ? `<span class="badge fatturato">fatturato</span>` : ''}
+            ${ev.dateEnd!==ev.dateStart ? `<span class="hint">fino al ${fmtDateHuman(ev.dateEnd)}</span>`:''}
+          </div>
+          <div class="agenda-meta">
+            ${ev.substitute?`<span>Sostituto: ${escapeHtml(ev.substitute)}</span>`:''}
+            ${reimbCount?`<span>${reimbCount} rimborso${reimbCount>1?'i':''} · ${fmtMoney(reimbTotal)} (${reimbRequested}/${reimbCount} richiesti, ${reimbApproved}/${reimbCount} approvati)</span>`:''}
+            ${ev.kind==='nota' && ev.notes ? `<span>${escapeHtml(ev.notes)}</span>`:''}
+          </div>
+        </div>
+        <div class="agenda-side">
+          ${showFee ? `<div class="agenda-fee ${ev.fee==null?'tbc':''}">${ev.fee==null?'da def.':fmtMoney(ev.fee)}</div>` : ''}
+        </div>`;
+      row.addEventListener('click', ()=> openEventModal(ev.id));
+      body.appendChild(row);
+    });
+  }
+
+  /* ---------------- Rendering: Summary ---------------- */
+  function renderSummary(){
+    renderMonthLabel();
+    const container = document.getElementById('viewSummary');
+    const monthStart = isoDate(view.year, view.month, 1);
+    const monthEnd = isoDate(view.year, view.month, new Date(view.year, view.month+1,0).getDate());
+    const allEvs = DB.events.filter(ev => ev.dateEnd >= monthStart && ev.dateStart <= monthEnd);
+    const evs = allEvs.filter(e => e.kind==='impegno' || e.kind==='travel'); // money-relevant
+    const travelDays = allEvs.filter(e=>e.kind==='travel').length;
+    const noteCount = allEvs.filter(e=>e.kind==='nota').length;
+
+    const confermati = evs.filter(e=>e.status==='confermato');
+    const tbc = evs.filter(e=>e.status==='tbc');
+    const opzione = evs.filter(e=>e.status==='opzione');
+    const totConfermato = confermati.reduce((s,e)=> s+(e.fee||0), 0);
+    const totTbc = tbc.reduce((s,e)=> s+(e.fee||0), 0);
+
+    let rimbApprovato = 0, rimbDaApprovare = 0, rimbCount = 0;
+    const rimbDaRichiedere = []; // reimbursements never asked for yet
+    evs.forEach(e=> (e.reimbursements||[]).forEach(r=>{
+      rimbCount++;
+      if (r.amount){
+        if (r.approved) rimbApprovato += r.amount; else rimbDaApprovare += r.amount;
+      }
+      if (!r.requested){
+        rimbDaRichiedere.push({ ev: e, r });
+      }
+    }));
+
+    // impegni confermati ma non ancora fatturati: la checklist di fine mese
+    const daFatturare = confermati.filter(e => !e.invoiced);
+
+    const byClient = {};
+    evs.forEach(e=>{
+      if (!e.clientId) return;
+      const c = getClient(e.clientId);
+      if (!c) return;
+      byClient[c.id] = byClient[c.id] || { name: c.name, count:0, fee:0, color: clientColor(c) };
+      byClient[c.id].count++;
+      byClient[c.id].fee += (e.fee||0);
+    });
+    const rows = Object.values(byClient).sort((a,b)=> b.fee - a.fee);
+
+    container.innerHTML = `
+      <div class="summary-grid">
+        <div class="stat-card">
+          <div class="label">Impegni nel mese</div>
+          <div class="value">${evs.length}</div>
+          <div class="value sub">${confermati.length} confermati · ${tbc.length} TBC · ${opzione.length} opzione</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Compensi confermati</div>
+          <div class="value">${fmtMoney(totConfermato)}</div>
+          <div class="value sub">+ ${fmtMoney(totTbc)} se si confermano i TBC</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Rimborsi approvati</div>
+          <div class="value">${fmtMoney(rimbApprovato)}</div>
+          <div class="value sub">${rimbCount} righe di rimborso totali</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Rimborsi da approvare</div>
+          <div class="value">${fmtMoney(rimbDaApprovare)}</div>
+          <div class="value sub">ancora da confermare con il committente</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Giorni di viaggio</div>
+          <div class="value">${travelDays}</div>
+          <div class="value sub">${noteCount} note libere nel mese</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Da fatturare</div>
+          <div class="value">${daFatturare.length}</div>
+          <div class="value sub">${fmtMoney(daFatturare.reduce((s,e)=>s+(e.fee||0),0))} ancora da fatturare</div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Da fatturare — checklist fine mese</h3>
+      ${daFatturare.length ? `
+      <table class="summary-table">
+        <thead><tr><th>Data</th><th>Impegno</th><th style="text-align:right;">Compenso</th></tr></thead>
+        <tbody>
+          ${daFatturare.sort((a,b)=>a.dateStart.localeCompare(b.dateStart)).map(e=>`<tr>
+            <td>${fmtDateHuman(e.dateStart)}</td>
+            <td>${escapeHtml(fullLabel(e))}</td>
+            <td class="num">${e.fee==null?'da def.':fmtMoney(e.fee)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="empty-state"><p>Tutto fatturato per questo mese.</p></div>`}
+
+      <h3 class="section-title">Rimborsi da richiedere</h3>
+      ${rimbDaRichiedere.length ? `
+      <table class="summary-table">
+        <thead><tr><th>Data</th><th>Impegno</th><th>Descrizione</th><th style="text-align:right;">Importo</th></tr></thead>
+        <tbody>
+          ${rimbDaRichiedere.sort((a,b)=>a.ev.dateStart.localeCompare(b.ev.dateStart)).map(({ev,r})=>`<tr>
+            <td>${fmtDateHuman(ev.dateStart)}</td>
+            <td>${escapeHtml(fullLabel(ev))}</td>
+            <td>${escapeHtml(r.desc||'—')}</td>
+            <td class="num">${r.amount==null?'da def.':fmtMoney(r.amount)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="empty-state"><p>Nessun rimborso in sospeso da richiedere.</p></div>`}
+
+      <h3 class="section-title">Per cliente / tour — ${MONTHS[view.month]} ${view.year}</h3>
+      ${rows.length ? `
+      <table class="summary-table">
+        <thead><tr><th>Cliente</th><th>Impegni</th><th style="text-align:right;">Compenso totale</th></tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr>
+            <td><span class="dot" style="background:${r.color};display:inline-block;margin-right:7px;"></span>${escapeHtml(r.name)}</td>
+            <td>${r.count}</td>
+            <td class="num">${fmtMoney(r.fee)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="empty-state"><p>Nessun impegno con cliente in questo mese.</p></div>`}
+    `;
+  }
+
+  /* ---------------- Master render ---------------- */
+  function render(){
+    document.getElementById('viewGrid').style.display = view.tab==='grid' ? '' : 'none';
+    document.getElementById('viewAgenda').style.display = view.tab==='agenda' ? '' : 'none';
+    document.getElementById('viewSummary').style.display = view.tab==='summary' ? '' : 'none';
+
+    if (view.tab==='grid') renderGrid();
+    else if (view.tab==='agenda') renderAgenda();
+    else renderSummary();
+
+    renderFilterChips();
+    renderDatalists();
+  }
+
+  /* ---------------- Filters UI ---------------- */
+  function renderFilterChips(){
+    const wrap = document.getElementById('clientChips');
+    const clientsSorted = [...DB.clients].sort((a,b)=>a.name.localeCompare(b.name));
+    wrap.innerHTML = clientsSorted.map(c=>{
+      const checked = !view.clientFilter || view.clientFilter.has(c.id);
+      return `<label class="chip-check"><span class="dot" style="background:${clientColor(c)}"></span>
+        <input type="checkbox" data-client="${c.id}" ${checked?'checked':''}> ${escapeHtml(c.name)}</label>`;
+    }).join('') || '<span class="hint">Nessun cliente ancora.</span>';
+    wrap.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        const all = [...wrap.querySelectorAll('input[type=checkbox]')];
+        const checkedIds = all.filter(x=>x.checked).map(x=>x.dataset.client);
+        view.clientFilter = checkedIds.length === all.length ? null : new Set(checkedIds);
+        render();
+      });
+    });
+  }
+
+  function renderDatalists(){
+    document.getElementById('artistList').innerHTML = DB.clients.map(c=>`<option value="${escapeHtml(c.name)}">`).join('');
+    document.getElementById('companyList').innerHTML = DB.companies.map(c=>`<option value="${escapeHtml(c.name)}">`).join('');
+  }
+
+  /* ---------------- Event modal ---------------- */
+  function setKind(kind){
+    currentKind = kind;
+    document.querySelectorAll('#kindToggle button').forEach(b=> b.classList.toggle('active', b.dataset.kind===kind));
+    const isNota = kind === 'nota';
+    const isTravel = kind === 'travel';
+    document.getElementById('fld-artistCompany').style.display = isNota ? 'none' : '';
+    document.getElementById('fld-label').style.display = isNota ? '' : 'none';
+    document.getElementById('fld-venue').style.display = isNota ? 'none' : '';
+    document.getElementById('fld-status').style.display = isNota ? 'none' : '';
+    document.getElementById('fld-feeSub').style.display = isNota ? 'none' : '';
+    document.getElementById('fld-substitute').style.display = isTravel ? 'none' : '';
+    document.getElementById('fld-reimb').style.display = isNota ? 'none' : '';
+    document.getElementById('fld-invoiced').style.display = isNota ? 'none' : '';
+    document.getElementById('artistOptionalHint').textContent = isTravel ? '(facoltativo)' : '';
+  }
+  document.getElementById('kindToggle').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-kind]');
+    if (btn) setKind(btn.dataset.kind);
+  });
+
+  function openEventModal(id, prefillDate){
+    editingEventId = id;
+    const overlay = document.getElementById('eventOverlay');
+    const title = document.getElementById('eventModalTitle');
+    const delBtn = document.getElementById('btnDeleteEvent');
+
+    if (id){
+      const ev = DB.events.find(e=>e.id===id);
+      const c = getClient(ev.clientId);
+      title.textContent = 'Modifica';
+      delBtn.style.display = '';
+      setKind(ev.kind || 'impegno');
+      document.getElementById('f-artist').value = c ? c.name : '';
+      document.getElementById('f-company').value = (c && c.companyId) ? (getCompany(c.companyId)?.name || '') : '';
+      document.getElementById('f-label').value = ev.label || '';
+      document.getElementById('f-venue').value = ev.venue || '';
+      document.getElementById('f-start').value = ev.dateStart;
+      document.getElementById('f-end').value = ev.dateEnd !== ev.dateStart ? ev.dateEnd : '';
+      document.getElementById('f-status').value = ev.status || 'confermato';
+      document.getElementById('f-fee').value = ev.fee===null||ev.fee===undefined ? '' : ev.fee;
+      document.getElementById('f-substitute').value = ev.substitute || '';
+      document.getElementById('f-notes').value = ev.notes || '';
+      document.getElementById('f-invoiced').checked = !!ev.invoiced;
+      renderReimbList(ev.reimbursements || []);
+    } else {
+      title.textContent = 'Nuovo';
+      delBtn.style.display = 'none';
+      setKind('impegno');
+      document.getElementById('f-artist').value = '';
+      document.getElementById('f-company').value = '';
+      document.getElementById('f-label').value = '';
+      document.getElementById('f-venue').value = '';
+      document.getElementById('f-start').value = prefillDate || todayISO();
+      document.getElementById('f-end').value = '';
+      document.getElementById('f-status').value = 'confermato';
+      document.getElementById('f-fee').value = '';
+      document.getElementById('f-substitute').value = '';
+      document.getElementById('f-notes').value = '';
+      document.getElementById('f-invoiced').checked = false;
+      renderReimbList([]);
+    }
+    overlay.classList.add('open');
+    setTimeout(()=> document.getElementById('f-artist').focus(), 30);
+  }
+  function closeEventModal(){
+    document.getElementById('eventOverlay').classList.remove('open');
+    editingEventId = null;
+  }
+
+  function renderReimbList(list){
+    const wrap = document.getElementById('reimbList');
+    wrap.innerHTML = '';
+    list.forEach(r => addReimbRow(r));
+  }
+  function addReimbRow(r){
+    r = r || { id: uid('r'), desc:'', amount:null, requested:false, approved:false };
+    const wrap = document.getElementById('reimbList');
+    const row = document.createElement('div');
+    row.className = 'reimb-row';
+    row.dataset.id = r.id;
+    row.innerHTML = `
+      <input type="text" class="ri-desc" placeholder="Descrizione (es. viaggio A/R)" value="${escapeHtml(r.desc||'')}">
+      <input type="number" class="ri-amount" placeholder="€" step="0.01" value="${r.amount===null||r.amount===undefined?'':r.amount}">
+      <label class="reimb-approved"><input type="checkbox" class="ri-requested" ${r.requested?'checked':''}> richiesto</label>
+      <label class="reimb-approved"><input type="checkbox" class="ri-approved" ${r.approved?'checked':''}> approvato</label>
+      <button type="button" class="reimb-del" title="Rimuovi">✕</button>
+    `;
+    row.querySelector('.reimb-del').addEventListener('click', ()=> row.remove());
+    wrap.appendChild(row);
+  }
+  function collectReimbursements(){
+    return [...document.querySelectorAll('#reimbList .reimb-row')].map(row=>{
+      const desc = row.querySelector('.ri-desc').value.trim();
+      const amountRaw = row.querySelector('.ri-amount').value;
+      const requested = row.querySelector('.ri-requested').checked;
+      const approved = row.querySelector('.ri-approved').checked;
+      return { id: row.dataset.id, desc, amount: amountRaw===''?null:parseFloat(amountRaw), requested, approved };
+    }).filter(r => r.desc || r.amount!==null);
+  }
+
+  function saveEvent(){
+    const kind = currentKind;
+    const start = document.getElementById('f-start').value;
+    if (!start){ alert('Inserisci la data di inizio.'); return; }
+    let end = document.getElementById('f-end').value || start;
+    if (end < start) end = start;
+
+    let clientId = null;
+    let label = '';
+    if (kind === 'nota'){
+      label = document.getElementById('f-label').value.trim();
+      if (!label){ alert('Scrivi cosa devi ricordare.'); return; }
+    } else {
+      const artistName = document.getElementById('f-artist').value.trim();
+      if (kind === 'impegno' && !artistName){ alert('Inserisci almeno il nome dell\'artista/tour/cliente.'); return; }
+      if (artistName){
+        const companyName = document.getElementById('f-company').value.trim();
+        const companyId = companyName ? ensureCompany(companyName) : null;
+        clientId = ensureClient(artistName, companyId);
+      }
+    }
+
+    const feeRaw = document.getElementById('f-fee').value;
+    const payload = {
+      kind, clientId, label,
+      venue: document.getElementById('f-venue').value.trim(),
+      dateStart: start,
+      dateEnd: end,
+      status: document.getElementById('f-status').value,
+      fee: (kind==='nota' || feeRaw==='') ? null : parseFloat(feeRaw),
+      substitute: kind==='impegno' ? (document.getElementById('f-substitute').value.trim() || null) : null,
+      notes: document.getElementById('f-notes').value.trim(),
+      invoiced: kind==='nota' ? false : document.getElementById('f-invoiced').checked,
+      reimbursements: kind==='nota' ? [] : collectReimbursements(),
+    };
+
+    if (editingEventId){
+      const idx = DB.events.findIndex(e=>e.id===editingEventId);
+      DB.events[idx] = { ...DB.events[idx], ...payload };
+    } else {
+      DB.events.push({ id: uid('e'), ...payload });
+    }
+    markDirty();
+    closeEventModal();
+    render();
+  }
+
+  function deleteEvent(){
+    if (!editingEventId) return;
+    if (!confirm('Eliminare questo elemento?')) return;
+    DB.events = DB.events.filter(e=>e.id!==editingEventId);
+    markDirty();
+    closeEventModal();
+    render();
+  }
+
+  /* ---------------- Clients modal ---------------- */
+  function openClientsModal(){
+    renderClientColorList();
+    document.getElementById('clientsOverlay').classList.add('open');
+  }
+  function closeClientsModal(){
+    document.getElementById('clientsOverlay').classList.remove('open');
+    render();
+  }
+  function clientCompanySelectHtml(selectedId, companiesSorted){
+    return `<select class="cl-company">
+      <option value="">— diretto —</option>
+      ${companiesSorted.map(co=>`<option value="${co.id}" ${selectedId===co.id?'selected':''}>${escapeHtml(co.name)}</option>`).join('')}
+    </select>`;
+  }
+  function clientRowHtml(c, companiesSorted){
+    return `<div class="client-color-row" data-id="${c.id}" style="padding-left:22px;">
+      <input type="text" class="cl-name" value="${escapeHtml(c.name)}">
+      ${clientCompanySelectHtml(c.companyId, companiesSorted)}
+      <input type="color" value="${hslToHex(clientColor(c))}">
+      <button type="button" class="row-del" data-del-client="${c.id}" title="Elimina cliente">✕</button>
+    </div>`;
+  }
+  function renderClientColorList(){
+    const wrap = document.getElementById('clientColorList');
+    const companiesSorted = [...DB.companies].sort((a,b)=>a.name.localeCompare(b.name));
+    const noCompanyClients = DB.clients.filter(c=>!c.companyId).sort((a,b)=>a.name.localeCompare(b.name));
+
+    if (!companiesSorted.length && !noCompanyClients.length){
+      wrap.innerHTML = '<p class="hint">Nessun cliente ancora — se ne crea uno automaticamente quando aggiungi un impegno.</p>';
+      return;
+    }
+
+    let html = '';
+    companiesSorted.forEach(comp=>{
+      const clients = clientsOfCompany(comp.id);
+      html += `<div class="company-group">
+        <div class="company-header" data-company="${comp.id}">
+          <input type="color" value="${hslToHex(companyColor(comp))}">
+          <input type="text" class="co-name" value="${escapeHtml(comp.name)}">
+          <button type="button" class="row-del" data-del-company="${comp.id}" title="Elimina società">✕</button>
+        </div>
+        ${clients.map(c=>clientRowHtml(c, companiesSorted)).join('') || '<div class="client-color-row" style="padding-left:22px;"><span class="name hint">Nessun tour ancora sotto questa società.</span></div>'}
+      </div>`;
+    });
+    if (noCompanyClients.length){
+      html += `<div class="company-group">
+        <div class="company-header"><span class="company-name" style="color:var(--text-dim);">Diretti (senza società)</span></div>
+        ${noCompanyClients.map(c=>clientRowHtml(c, companiesSorted)).join('')}
+      </div>`;
+    }
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll('.company-header[data-company]').forEach(row=>{
+      const compId = row.dataset.company;
+      row.querySelector('input[type=color]').addEventListener('input', (e)=>{
+        getCompany(compId).color = e.target.value;
+        markDirty();
+        renderClientColorList();
+      });
+      row.querySelector('.co-name').addEventListener('change', (e)=> renameCompany(compId, e.target.value));
+    });
+    wrap.querySelectorAll('[data-del-company]').forEach(btn=>{
+      btn.addEventListener('click', ()=> deleteCompany(btn.dataset.delCompany));
+    });
+    wrap.querySelectorAll('.client-color-row[data-id]').forEach(row=>{
+      const clientId = row.dataset.id;
+      row.querySelector('input[type=color]').addEventListener('input', (e)=>{
+        getClient(clientId).color = e.target.value;
+        markDirty();
+      });
+      row.querySelector('.cl-name').addEventListener('change', (e)=> renameClient(clientId, e.target.value));
+      row.querySelector('.cl-company').addEventListener('change', (e)=>{
+        getClient(clientId).companyId = e.target.value || null;
+        markDirty();
+        renderClientColorList();
+      });
+    });
+    wrap.querySelectorAll('[data-del-client]').forEach(btn=>{
+      btn.addEventListener('click', ()=> deleteClient(btn.dataset.delClient));
+    });
+  }
+
+  function renameClient(id, newName){
+    const client = getClient(id);
+    if (!client) return; // riga già rimossa (es. re-render dopo un merge precedente)
+    newName = (newName||'').trim();
+    if (!newName){ renderClientColorList(); return; }
+    if (newName.toLowerCase() === client.name.toLowerCase()){ client.name = newName; markDirty(); return; }
+    const other = DB.clients.find(c => c.id!==id && c.name.toLowerCase()===newName.toLowerCase());
+    if (other){
+      if (!confirm(`Esiste già un cliente "${other.name}". Unire "${client.name}" dentro "${other.name}"? Tutti i suoi impegni verranno spostati e "${client.name}" verrà rimosso.`)){
+        renderClientColorList();
+        return;
+      }
+      DB.events.forEach(e => { if (e.clientId === id) e.clientId = other.id; });
+      DB.clients = DB.clients.filter(c => c.id !== id);
+    } else {
+      client.name = newName;
+    }
+    markDirty();
+    renderClientColorList();
+    renderDatalists();
+    render();
+  }
+
+  function deleteClient(id){
+    const client = getClient(id);
+    if (!client) return;
+    const count = DB.events.filter(e=>e.clientId===id).length;
+    if (count > 0){
+      alert(`"${client.name}" ha ${count} impegn${count>1?'i':'o'} collegat${count>1?'i':'o'} — non posso eliminarlo. Rinomina prima quegli impegni su un altro cliente (o eliminali), poi riprova.`);
+      return;
+    }
+    if (!confirm(`Eliminare il cliente "${client.name}"?`)) return;
+    DB.clients = DB.clients.filter(c=>c.id!==id);
+    markDirty();
+    renderClientColorList();
+    renderDatalists();
+    render();
+  }
+
+  function renameCompany(id, newName){
+    const comp = getCompany(id);
+    if (!comp) return; // riga già rimossa (es. re-render dopo un merge precedente)
+    newName = (newName||'').trim();
+    if (!newName){ renderClientColorList(); return; }
+    if (newName.toLowerCase() === comp.name.toLowerCase()){ comp.name = newName; markDirty(); return; }
+    const other = DB.companies.find(c => c.id!==id && c.name.toLowerCase()===newName.toLowerCase());
+    if (other){
+      if (!confirm(`Esiste già la società "${other.name}". Unire "${comp.name}" dentro "${other.name}"?`)){
+        renderClientColorList();
+        return;
+      }
+      DB.clients.forEach(c=>{ if (c.companyId===id) c.companyId = other.id; });
+      DB.companies = DB.companies.filter(c=>c.id!==id);
+    } else {
+      comp.name = newName;
+    }
+    markDirty();
+    renderClientColorList();
+    renderDatalists();
+    render();
+  }
+
+  function deleteCompany(id){
+    const comp = getCompany(id);
+    if (!comp) return;
+    const count = clientsOfCompany(id).length;
+    const msg = count>0
+      ? `Eliminare la società "${comp.name}"? I ${count} tour collegati diventeranno diretti (senza società).`
+      : `Eliminare la società "${comp.name}"?`;
+    if (!confirm(msg)) return;
+    DB.clients.forEach(c=>{ if (c.companyId===id) c.companyId=null; });
+    DB.companies = DB.companies.filter(c=>c.id!==id);
+    markDirty();
+    renderClientColorList();
+    renderDatalists();
+    render();
+  }
+  function hslToHex(hslStr){
+    const m = hslStr.match(/hsl\(([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\)/);
+    if (!m) return '#888888';
+    let [h,s,l] = [parseFloat(m[1]), parseFloat(m[2])/100, parseFloat(m[3])/100];
+    const k = n => (n + h/30) % 12;
+    const a = s * Math.min(l, 1-l);
+    const f = n => l - a*Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n),1)));
+    const toHex = x => Math.round(255*x).toString(16).padStart(2,'0');
+    return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+  }
+
+  /* ---------------- Export / Import ---------------- */
+  function exportData(){
+    const blob = new Blob([JSON.stringify(DB, null, 1)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calendario-lavoro-${todayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+  function importData(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.clients || !data.events) throw new Error('formato non riconosciuto');
+        data.companies = data.companies || [];
+        data.events.forEach(e=>{
+          if (!e.kind) e.kind = 'impegno';
+          if (e.invoiced === undefined) e.invoiced = false;
+          (e.reimbursements||[]).forEach(r=>{ if (r.requested === undefined) r.requested = false; });
+        });
+        DB = data;
+        markDirty();
+        render();
+        alert(`Importati ${data.events.length} elementi, ${data.clients.length} clienti/tour, ${data.companies.length} società.`);
+      } catch(err){
+        alert('Non sono riuscito a leggere questo file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------------- Wiring ---------------- */
+  document.querySelectorAll('.tabs button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      view.tab = btn.dataset.tab;
+      render();
+    });
+  });
+  document.getElementById('prevMonth').addEventListener('click', ()=>{
+    view.month--; if (view.month<0){ view.month=11; view.year--; } render();
+  });
+  document.getElementById('nextMonth').addEventListener('click', ()=>{
+    view.month++; if (view.month>11){ view.month=0; view.year++; } render();
+  });
+  document.getElementById('btnToday').addEventListener('click', ()=>{
+    const d = new Date(); view.year=d.getFullYear(); view.month=d.getMonth(); render();
+  });
+  document.getElementById('searchBox').addEventListener('input', (e)=>{
+    view.search = e.target.value; render();
+  });
+  document.getElementById('btnFilter').addEventListener('click', ()=>{
+    document.getElementById('filterPanel').classList.toggle('open');
+  });
+  document.querySelectorAll('.f-status').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      view.statuses = new Set([...document.querySelectorAll('.f-status:checked')].map(c=>c.value));
+      render();
+    });
+  });
+  document.querySelectorAll('.f-kind').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      view.kinds = new Set([...document.querySelectorAll('.f-kind:checked')].map(c=>c.value));
+      render();
+    });
+  });
+  document.getElementById('btnClearFilters').addEventListener('click', ()=>{
+    document.querySelectorAll('.f-status').forEach(cb=> cb.checked = true);
+    document.querySelectorAll('.f-kind').forEach(cb=> cb.checked = true);
+    view.statuses = new Set(['confermato','tbc','opzione']);
+    view.kinds = new Set(['impegno','travel','nota']);
+    view.clientFilter = null;
+    document.getElementById('searchBox').value = '';
+    view.search = '';
+    render();
+  });
+
+  document.getElementById('btnNew').addEventListener('click', ()=> openEventModal(null));
+  document.getElementById('closeEventModal').addEventListener('click', closeEventModal);
+  document.getElementById('btnCancelEvent').addEventListener('click', closeEventModal);
+  document.getElementById('btnSaveEvent').addEventListener('click', saveEvent);
+  document.getElementById('btnDeleteEvent').addEventListener('click', deleteEvent);
+  document.getElementById('btnAddReimb').addEventListener('click', ()=> addReimbRow());
+  document.getElementById('eventOverlay').addEventListener('click', (e)=>{ if (e.target.id==='eventOverlay') closeEventModal(); });
+
+  document.getElementById('btnClients').addEventListener('click', openClientsModal);
+  document.getElementById('closeClientsModal').addEventListener('click', closeClientsModal);
+  document.getElementById('closeClientsModal2').addEventListener('click', closeClientsModal);
+  document.getElementById('clientsOverlay').addEventListener('click', (e)=>{ if (e.target.id==='clientsOverlay') closeClientsModal(); });
+  document.getElementById('btnAddClient').addEventListener('click', ()=>{
+    const input = document.getElementById('newClientName');
+    const companyInput = document.getElementById('newClientCompany');
+    if (input.value.trim()){
+      const companyId = companyInput.value.trim() ? ensureCompany(companyInput.value.trim()) : null;
+      ensureClient(input.value.trim(), companyId);
+      input.value=''; companyInput.value='';
+      markDirty();
+      renderClientColorList();
+      renderDatalists();
+    }
+  });
+
+  document.getElementById('btnExport').addEventListener('click', exportData);
+  document.getElementById('btnImport').addEventListener('click', ()=> document.getElementById('fileImport').click());
+  document.getElementById('fileImport').addEventListener('change', (e)=>{
+    if (e.target.files[0]) importData(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 'Escape'){ closeEventModal(); closeClientsModal(); closeSyncModal(); }
+  });
+
+  /* ---------------- Sync modal wiring ---------------- */
+  function openSyncModal(){
+    document.getElementById('syncBinId').value = syncConfig.binId || '';
+    document.getElementById('syncApiKey').value = syncConfig.apiKey || '';
+    updateSyncUI();
+    document.getElementById('syncOverlay').classList.add('open');
+  }
+  function closeSyncModal(){
+    document.getElementById('syncOverlay').classList.remove('open');
+  }
+  document.getElementById('btnSync').addEventListener('click', openSyncModal);
+  document.getElementById('closeSyncModal').addEventListener('click', closeSyncModal);
+  document.getElementById('closeSyncModal2').addEventListener('click', closeSyncModal);
+  document.getElementById('syncOverlay').addEventListener('click', (e)=>{ if (e.target.id==='syncOverlay') closeSyncModal(); });
+  document.getElementById('btnSyncSave').addEventListener('click', ()=>{
+    syncConfig.binId = document.getElementById('syncBinId').value.trim();
+    syncConfig.apiKey = document.getElementById('syncApiKey').value.trim();
+    saveSyncConfig();
+    updateSyncUI();
+    if (syncConfig.binId && syncConfig.apiKey) pullFromCloud(false);
+  });
+  document.getElementById('btnSyncPull').addEventListener('click', ()=>{
+    if (!syncConfig.binId || !syncConfig.apiKey){ alert('Inserisci prima Bin ID e chiave, poi salva la connessione.'); return; }
+    if (confirm('Sovrascrivere i dati su questo dispositivo con quelli salvati nel cloud?')) pullFromCloud(true);
+  });
+  document.getElementById('btnSyncPush').addEventListener('click', ()=>{
+    if (!syncConfig.binId || !syncConfig.apiKey){ alert('Inserisci prima Bin ID e chiave, poi salva la connessione.'); return; }
+    pushToCloud();
+  });
+  document.getElementById('btnSyncDisconnect').addEventListener('click', ()=>{
+    if (!confirm('Disconnettere la sincronizzazione? I dati restano salvati su questo dispositivo.')) return;
+    syncConfig = { binId:'', apiKey:'' };
+    saveSyncConfig();
+    document.getElementById('syncBinId').value = '';
+    document.getElementById('syncApiKey').value = '';
+    updateSyncUI();
+  });
+
+  document.getElementById('closeDayModal').addEventListener('click', closeDayModal);
+  document.getElementById('dayOverlay').addEventListener('click', (e)=>{ if (e.target.id==='dayOverlay') closeDayModal(); });
+  document.getElementById('btnDayModalNew').addEventListener('click', ()=>{
+    const d = dayModalDate;
+    closeDayModal();
+    openEventModal(null, d);
+  });
+
+  // Ricalcola la griglia se si passa tra vista mobile e desktop (o si ruota il telefono).
+  let resizeTimer = null;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=>{ if (view.tab === 'grid') renderGrid(); }, 150);
+  });
+
+  /* ---------------- Service worker (offline) ---------------- */
+  if ('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('sw.js').catch(()=>{ /* non disponibile, es. file:// */ });
+    });
+  }
+
+  /* ---------------- Init ---------------- */
+  render();
+  updateSyncUI();
+  if (syncConfig.binId && syncConfig.apiKey) pullFromCloud(false);
+})();
+</script>
+</body>
+</html>
